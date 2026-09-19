@@ -45,7 +45,7 @@ npm test -w mobile-simulator-mcp
 
 ## Point Cursor at this server
 
-Add a stdio server in `~/.cursor/mcp.json` (or a project `.cursor/mcp.json`). Example using the local binary — also in [`.cursor/mcp.json.example`](../../.cursor/mcp.json.example):
+Add a stdio server in **`~/.cursor/mcp.json`** (user-level, once per Mac — not a project file in every iOS app). Example using the local binary — also in [`.cursor/mcp.json.example`](../../.cursor/mcp.json.example). `npx -y mobile-simulator-mcp` is the intended command and is **not published yet**. The Add to Cursor deeplink is in the [root README](../../README.md).
 
 ```json
 {

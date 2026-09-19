@@ -58,11 +58,19 @@ export MOBILE_SIMULATOR_BIN="$PWD/native/simulator-controller/.build/release/mob
 npm run dev:viewer
 ```
 
-`npx -y mobile-simulator-mcp` is not published yet. Point Cursor at the local `node …/dist/index.js` command.
+`npx -y mobile-simulator-mcp` is the **intended** MCP command. The package is **not published yet** — do not expect `npx` to resolve until it is. Today, point Cursor at the local `node …/dist/index.js` command below.
 
-### Cursor MCP example
+## Install once in Cursor
 
-Copy [`.cursor/mcp.json.example`](.cursor/mcp.json.example) into `~/.cursor/mcp.json` or a project `.cursor/mcp.json`. Replace `/ABS/PATH/mobile-simulator` with this repo:
+Do this **once on the Mac**, not in every iOS app. Cursor will not clone this repo again when you say “run this on the simulator.” Cloud Agents cannot use this stack (desktop macOS + Xcode only).
+
+1. Build `mobile-sim` from **this** repo (or a future GitHub Release). The Cursor plugin cannot ship that native binary.
+2. `mobile-sim grant`
+3. Copy [`.cursor/mcp.json.example`](.cursor/mcp.json.example) → **`~/.cursor/mcp.json`** (user-level). Replace `/ABS/PATH/mobile-simulator` with this clone.
+4. Enable the server in **Customize → MCPs**.
+5. Optional: copy [`skills/run-on-simulator/`](skills/run-on-simulator/) → `~/.cursor/skills/run-on-simulator/` so the agent prefers these tools over `xcrun simctl`.
+
+User-level MCP (works today):
 
 ```json
 {
@@ -78,9 +86,55 @@ Copy [`.cursor/mcp.json.example`](.cursor/mcp.json.example) into `~/.cursor/mcp.
 }
 ```
 
-Do not commit a personal `.cursor/mcp.json` with machine paths. The example file is the documented template.
+Do not commit a personal `.cursor/mcp.json` with machine paths. Do not add a project `.cursor/mcp.json` to other people’s iOS apps.
 
-See [apps/mcp-server/README.md](apps/mcp-server/README.md).
+### Add to Cursor (MCP deeplink)
+
+Intended command after npm publish. `config` is Base64 of the server JSON ([install links](https://cursor.com/docs/mcp/install-links.md)). Set `MOBILE_SIMULATOR_BIN` if your binary is not at `~/.mobile-simulator/bin/mobile-sim`.
+
+[Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=mobile-simulator&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIm1vYmlsZS1zaW11bGF0b3ItbWNwIl0sImVudiI6eyJNT0JJTEVfU0lNVUxBVE9SX0JJTiI6IiR7dXNlckhvbWV9Ly5tb2JpbGUtc2ltdWxhdG9yL2Jpbi9tb2JpbGUtc2ltIn19)
+
+```text
+cursor://anysphere.cursor-deeplink/mcp/install?name=mobile-simulator&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIm1vYmlsZS1zaW11bGF0b3ItbWNwIl0sImVudiI6eyJNT0JJTEVfU0lNVUxBVE9SX0JJTiI6IiR7dXNlckhvbWV9Ly5tb2JpbGUtc2ltdWxhdG9yL2Jpbi9tb2JpbGUtc2ltIn19
+```
+
+Decoded `config`:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "mobile-simulator-mcp"],
+  "env": {
+    "MOBILE_SIMULATOR_BIN": "${userHome}/.mobile-simulator/bin/mobile-sim"
+  }
+}
+```
+
+Until npm publish, use the local `node …/dist/index.js` block above instead of this deeplink.
+
+### Thin plugin (skill + rule + MCP pointer)
+
+The plugin in [`plugin/`](plugin/) is markdown + `mcp.json` only. It does **not** contain `mobile-sim`. Native still comes from this repo or future GitHub Releases.
+
+`mcp.json` launches `npx -y mobile-simulator-mcp` with plugin variable `${MOBILE_SIMULATOR_BIN}` (set under **Plugins → Configure**). Until the package is on npm, change that server to the local `node …/dist/index.js` command.
+
+Try it locally (then **Developer: Reload Window**):
+
+```bash
+mkdir -p ~/.cursor/plugins/local
+cp -R plugin ~/.cursor/plugins/local/mobile-simulator
+# or, skill only:
+mkdir -p ~/.cursor/skills
+cp -R skills/run-on-simulator ~/.cursor/skills/run-on-simulator
+```
+
+Install the plugin at **user** scope. Then say “run this on the simulator” in any local project.
+
+### Listings (not done)
+
+[cursor.directory](https://cursor.directory) and [Cursor Marketplace publish](https://cursor.com/marketplace/publish) are the next listing steps. They are **not** submitted yet.
+
+See [apps/mcp-server/README.md](apps/mcp-server/README.md) and [plugin/README.md](plugin/README.md).
 
 ## Architecture
 
@@ -187,6 +241,8 @@ npm run dev:viewer
 | `packages/protocol` | Shared TypeScript types + JSON schema |
 | `apps/mcp-server` | MCP server (`mobile-simulator-mcp`) |
 | `apps/viewer` | React + Vite viewer + WS gateway |
+| `skills/run-on-simulator` | Agent skill (“run this on the simulator”) |
+| `plugin/` | Thin Cursor plugin (no native binary) |
 | `vendor/IDB_PIN` | facebook/idb SHA (clone is gitignored) |
 | `docs/` | Architecture and native notes |
 

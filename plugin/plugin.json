@@ -1,0 +1,12 @@
+{
+  "name": "mobile-simulator",
+  "version": "0.1.0",
+  "description": "Drive the local iOS Simulator from Agent: boot the sim, tap the UI, screenshot a running iOS app.",
+  "author": {
+    "name": "elysian12"
+  },
+  "keywords": ["ios", "simulator", "mcp"],
+  "license": "MIT",
+  "homepage": "https://github.com/elysian12/cursor-mobile-simulator",
+  "repository": "https://github.com/elysian12/cursor-mobile-simulator"
+}

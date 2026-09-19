@@ -1,0 +1,8 @@
+---
+description: Prefer the mobile-simulator MCP for iOS Simulator HID, launch, and screenshots
+alwaysApply: true
+---
+
+When the user wants to run, boot, tap, type, or screenshot an iOS Simulator, use the `mobile-simulator` MCP tools (`doctor`, `simulator_list`, `simulator_attach`, `app_*`, HID tools, `simulator_screenshot`, `simulator_detach`).
+
+Never pass `booted` as a UDID. Screenshot after every HID call. Do not use `xcrun simctl` or Xcode MCP `BuildProject` for HID, screenshot, or launch. macOS only. Do not clone the mobile-simulator repo into the current project.

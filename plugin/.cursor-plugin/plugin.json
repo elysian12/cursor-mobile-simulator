@@ -1,0 +1,24 @@
+{
+  "name": "mobile-simulator",
+  "displayName": "Mobile Simulator",
+  "version": "0.1.0",
+  "description": "Drive the local iOS Simulator from Agent: boot the sim, tap the UI, screenshot a running iOS app.",
+  "author": {
+    "name": "elysian12"
+  },
+  "keywords": ["ios", "simulator", "mcp"],
+  "license": "MIT",
+  "homepage": "https://github.com/elysian12/cursor-mobile-simulator",
+  "repository": "https://github.com/elysian12/cursor-mobile-simulator",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "MOBILE_SIMULATOR_BIN": {
+        "type": "string",
+        "title": "Path to mobile-sim",
+        "description": "Absolute path to the installed mobile-sim binary. This plugin does not ship the native CLI."
+      }
+    },
+    "required": ["MOBILE_SIMULATOR_BIN"]
+  }
+}

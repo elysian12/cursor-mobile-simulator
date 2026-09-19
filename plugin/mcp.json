@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mobile-simulator": {
+      "command": "npx",
+      "args": ["-y", "mobile-simulator-mcp"],
+      "env": {
+        "MOBILE_SIMULATOR_BIN": "${MOBILE_SIMULATOR_BIN}"
+      }
+    }
+  }
+}

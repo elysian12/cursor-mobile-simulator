@@ -1,0 +1,16 @@
+{
+  "name": "mobile-simulator",
+  "owner": {
+    "name": "elysian12"
+  },
+  "metadata": {
+    "description": "iOS Simulator MCP, skill, and rules for Cursor. Public listings are not submitted yet."
+  },
+  "plugins": [
+    {
+      "name": "mobile-simulator",
+      "source": "plugin",
+      "description": "Drive the local iOS Simulator from Agent: boot the sim, tap the UI, screenshot a running iOS app."
+    }
+  ]
+}
