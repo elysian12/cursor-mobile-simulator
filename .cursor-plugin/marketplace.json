@@ -11,7 +11,7 @@
       "name": "mobile-simulator",
       "source": "plugin",
       "description": "Drive the local iOS Simulator from Agent: boot the sim, tap the UI, screenshot a running iOS app.",
-      "logo": "plugin/assets/logo.svg"
+      "logo": "plugin/assets/logo.jpg"
     }
   ]
 }

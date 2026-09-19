@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Mobile Simulator">
-  <rect width="128" height="128" rx="28" fill="#14161C"/>
-  <rect x="38" y="16" width="52" height="96" rx="12" fill="#1C1F28" stroke="#7C8CFF" stroke-width="3"/>
-  <rect x="50" y="22" width="28" height="6" rx="3" fill="#3A4154"/>
-  <rect x="44" y="34" width="40" height="58" rx="4" fill="#0B0D12"/>
-  <circle cx="76" cy="42" r="4" fill="#3DDC97"/>
-  <path d="M50 108h28" stroke="#7C8CFF" stroke-width="3" stroke-linecap="round"/>
-</svg>
