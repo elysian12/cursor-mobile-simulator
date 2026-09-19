@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync } from "node:fs";
 import { LUMA_PROBE_BYTES, LUMA_PROBE_HEIGHT, LUMA_PROBE_WIDTH, meanLuma } from "./jpeg-luma.js";
+import { DEFAULT_JPEG_QUALITY, viewerJpegSize } from "./live-size.js";
 
 const FFMPEG_CANDIDATES = [
   process.env.FFMPEG_PATH,
@@ -14,9 +15,61 @@ export interface JpegFrame {
   luma?: number;
 }
 
-export interface JpegTranscoder {
+interface ByteSink {
   push(chunk: Uint8Array): void;
   close(): void;
+}
+
+export interface JpegTranscoder extends ByteSink {
+  /** Stop the second ffmpeg luma probe after Live is unlocked. */
+  stopProbe(): void;
+}
+
+export interface JpegTranscodeOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+}
+
+/** ffmpeg argv for Annex-B → downscaled MJPEG. */
+export function jpegTranscodeArgs(options: JpegTranscodeOptions = {}): string[] {
+  const fallback = viewerJpegSize();
+  const width = options.width && options.width > 0 ? options.width : fallback.width;
+  const height = options.height && options.height > 0 ? options.height : fallback.height;
+  const quality = options.quality ?? DEFAULT_JPEG_QUALITY;
+  return [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-fflags",
+    "+genpts+nobuffer+discardcorrupt+flush_packets",
+    "-flags",
+    "low_delay",
+    "-use_wallclock_as_timestamps",
+    "1",
+    "-err_detect",
+    "ignore_err",
+    "-f",
+    "h264",
+    "-framerate",
+    "15",
+    "-i",
+    "pipe:0",
+    "-an",
+    "-fps_mode",
+    "passthrough",
+    "-vf",
+    `scale=${width}:${height}:flags=fast_bilinear,format=yuvj420p`,
+    "-strict",
+    "unofficial",
+    "-f",
+    "image2pipe",
+    "-vcodec",
+    "mjpeg",
+    "-q:v",
+    String(quality),
+    "pipe:1",
+  ];
 }
 
 export function findFfmpeg(): string | undefined {
@@ -58,46 +111,15 @@ export function extractJpegs(buffer: Uint8Array): { frames: Uint8Array[]; rest: 
 export function createAnnexBJpegTranscoder(
   onJpeg: (frame: JpegFrame) => void,
   onError: (error: Error) => void,
-  ffmpegPath = findFfmpeg(),
+  options: JpegTranscodeOptions & { ffmpegPath?: string } = {},
 ): JpegTranscoder | undefined {
+  const ffmpegPath = options.ffmpegPath ?? findFfmpeg();
   if (!ffmpegPath) {
     return undefined;
   }
   let child: ChildProcessWithoutNullStreams;
   try {
-    child = spawn(
-      ffmpegPath,
-      [
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-fflags",
-        "+genpts+nobuffer+discardcorrupt+flush_packets",
-        "-flags",
-        "low_delay",
-        "-use_wallclock_as_timestamps",
-        "1",
-        "-err_detect",
-        "ignore_err",
-        "-f",
-        "h264",
-        "-framerate",
-        "15",
-        "-i",
-        "pipe:0",
-        "-an",
-        "-fps_mode",
-        "passthrough",
-        "-f",
-        "image2pipe",
-        "-vcodec",
-        "mjpeg",
-        "-q:v",
-        "8",
-        "pipe:1",
-      ],
-      { stdio: ["pipe", "pipe", "pipe"] },
-    ) as ChildProcessWithoutNullStreams;
+    child = spawn(ffmpegPath, jpegTranscodeArgs(options), { stdio: ["pipe", "pipe", "pipe"] }) as ChildProcessWithoutNullStreams;
   } catch (error) {
     onError(error instanceof Error ? error : new Error(String(error)));
     return undefined;
@@ -105,12 +127,33 @@ export function createAnnexBJpegTranscoder(
 
   let rest = new Uint8Array();
   let closed = false;
+  let probeEnabled = true;
+  let jpegIndex = 0;
   const pendingJpeg: Uint8Array[] = [];
   const pendingLuma: number[] = [];
-  const lumaProbe = createJpegLumaProbe(ffmpegPath, (luma) => {
+  let lumaProbe: ByteSink | undefined = createJpegLumaProbe(ffmpegPath, (luma) => {
     pendingLuma.push(luma);
     flushPaired();
   });
+
+  const shouldProbe = (): boolean => {
+    jpegIndex += 1;
+    // Gate the first few frames for DeviceHub-black detection, then sample rarely.
+    return jpegIndex <= 6 || jpegIndex % 15 === 0;
+  };
+
+  const stopProbe = (): void => {
+    probeEnabled = false;
+    lumaProbe?.close();
+    lumaProbe = undefined;
+    while (pendingJpeg.length > 0) {
+      const jpeg = pendingJpeg.shift();
+      if (jpeg) {
+        onJpeg({ jpeg });
+      }
+    }
+    pendingLuma.length = 0;
+  };
 
   const flushPaired = (): void => {
     while (pendingJpeg.length > 0 && pendingLuma.length > 0) {
@@ -119,7 +162,11 @@ export function createAnnexBJpegTranscoder(
       if (!jpeg) {
         break;
       }
-      onJpeg({ jpeg, luma });
+      if (typeof luma === "number") {
+        onJpeg({ jpeg, luma });
+      } else {
+        onJpeg({ jpeg });
+      }
     }
     while (!lumaProbe && pendingJpeg.length > 0) {
       const jpeg = pendingJpeg.shift();
@@ -127,7 +174,7 @@ export function createAnnexBJpegTranscoder(
         onJpeg({ jpeg });
       }
     }
-    while (pendingJpeg.length > 8) {
+    while (pendingJpeg.length > 4) {
       const jpeg = pendingJpeg.shift();
       if (jpeg) {
         onJpeg({ jpeg });
@@ -140,7 +187,7 @@ export function createAnnexBJpegTranscoder(
     const extracted = extractJpegs(next);
     rest = new Uint8Array(extracted.rest);
     for (const frame of extracted.frames) {
-      if (!lumaProbe) {
+      if (!probeEnabled || !lumaProbe || !shouldProbe()) {
         onJpeg({ jpeg: frame });
         continue;
       }
@@ -177,12 +224,17 @@ export function createAnnexBJpegTranscoder(
         }
       });
     },
+    stopProbe,
     close(): void {
       if (closed) {
         return;
       }
       closed = true;
+      probeEnabled = false;
       lumaProbe?.close();
+      lumaProbe = undefined;
+      pendingJpeg.length = 0;
+      pendingLuma.length = 0;
       child.stdin.end();
       child.kill("SIGTERM");
     },
@@ -192,7 +244,7 @@ export function createAnnexBJpegTranscoder(
 function createJpegLumaProbe(
   ffmpegPath: string,
   onLuma: (luma: number) => void,
-): JpegTranscoder | undefined {
+): ByteSink | undefined {
   let child: ChildProcessWithoutNullStreams;
   try {
     child = spawn(

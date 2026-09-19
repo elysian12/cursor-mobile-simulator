@@ -69,9 +69,54 @@ describe("viewer attach hides Apple host UI", () => {
     });
 
     rpc.calls.length = 0;
+    messages.length = 0;
     relay.detach();
     expect(rpc.calls.map((call) => call.method)).not.toContain(Methods.simulatorShutdown);
+    expect(rpc.calls.map((call) => call.method)).not.toContain(Methods.simulatorHideHost);
     expect(relay.snapshot()).toBeUndefined();
+    expect(messages.some((message) => message.type === "stream_status" && message.mode === "disconnected")).toBe(true);
+    expect(messages.some((message) => message.type === "control_result" && message.action === "detach" && message.ok)).toBe(
+      true,
+    );
+  });
+
+  it("viewer detach stops the session without shutting down a pre-booted device", async () => {
+    const messages: WSServerMessage[] = [];
+    const rpc = mockRpc({
+      [Methods.simulatorList]: () => ({ devices: [DEVICE] }),
+      [Methods.simulatorHideHost]: () => ({
+        action: "hidden",
+        hidden: true,
+        app: "Device Hub",
+        note: "Apple Device Hub hidden — control this pane",
+      }),
+      [Methods.simulatorScreenshot]: () => {
+        throw new ProtocolRpcError({ code: ErrorCode.NOT_IMPLEMENTED, message: "skip still" });
+      },
+      [Methods.simulatorStream]: () => {
+        throw new ProtocolRpcError({ code: ErrorCode.NOT_ATTACHED, message: "skip live" });
+      },
+      [Methods.simulatorTap]: () => ({}),
+    });
+    const relay = createRelay(rpc, (message) => messages.push(message), () => undefined);
+    await relay.attach(UDID);
+    expect(relay.snapshot()?.bootedByServer).toBe(false);
+
+    rpc.calls.length = 0;
+    await relay.tap(10, 20);
+    expect(rpc.calls.map((call) => call.method)).toEqual([Methods.simulatorTap]);
+    expect(rpc.calls.map((call) => call.method)).not.toContain(Methods.simulatorScreenshot);
+    expect(rpc.calls.map((call) => call.method)).not.toContain(Methods.simulatorList);
+
+    rpc.calls.length = 0;
+    messages.length = 0;
+    relay.detach();
+    expect(rpc.calls).toEqual([]);
+    expect(relay.snapshot()).toBeUndefined();
+    const result = messages.find((message) => message.type === "control_result" && message.action === "detach");
+    expect(result).toMatchObject({ type: "control_result", action: "detach", ok: true });
+    const stream = messages.find((message) => message.type === "stream_status");
+    expect(stream).toMatchObject({ type: "stream_status", mode: "disconnected", connected: false });
   });
 
   it("attaches when Device Hub is not running", async () => {

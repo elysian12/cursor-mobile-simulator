@@ -9,6 +9,7 @@ import Input
 final class FBSCHIDSender: HIDSending, @unchecked Sendable {
     private let lock = NSLock()
     private var bootstrap: SimulatorControlBootstrap?
+    private var sessions: [String: SimulatorHID] = [:]
 
     public init() {}
 
@@ -17,8 +18,7 @@ final class FBSCHIDSender: HIDSending, @unchecked Sendable {
 
     public func attach(udid: String) async throws -> HIDAttachInfo {
         let simulator = try resolve(udid: udid)
-        let hid = try await SimulatorHID(for: simulator)
-        defer { Task { await hid.close() } }
+        _ = try await session(udid: udid, simulator: simulator)
         return attachInfo(from: simulator)
     }
 
@@ -26,7 +26,7 @@ final class FBSCHIDSender: HIDSending, @unchecked Sendable {
         let simulator = try resolve(udid: udid)
         let hid: SimulatorHID
         do {
-            hid = try await SimulatorHID(for: simulator)
+            hid = try await session(udid: udid, simulator: simulator)
         } catch {
             throw InputError.notAttached(
                 "simulator.hid",
@@ -42,17 +42,56 @@ final class FBSCHIDSender: HIDSending, @unchecked Sendable {
         do {
             let event = try Self.composite(events)
             try await hid.send(event: event, logger: simulator.logger)
-            await hid.close()
         } catch let error as InputError {
-            await hid.close()
+            await evict(udid: udid)
             throw error
         } catch {
-            await hid.close()
+            await evict(udid: udid)
             throw InputError.sendFailed(
                 "HID send failed for \(udid): \(error.localizedDescription). Event was not delivered."
             )
         }
         return attachInfo(from: simulator)
+    }
+
+    private func session(udid: String, simulator: Simulator) async throws -> SimulatorHID {
+        if let existing = cached(udid) {
+            return existing
+        }
+        let hid = try await SimulatorHID(for: simulator)
+        let kept = store(udid, hid)
+        if kept !== hid {
+            await hid.close()
+        }
+        return kept
+    }
+
+    private func evict(udid: String) async {
+        if let hid = take(udid) {
+            await hid.close()
+        }
+    }
+
+    private func cached(_ udid: String) -> SimulatorHID? {
+        lock.lock()
+        defer { lock.unlock() }
+        return sessions[udid]
+    }
+
+    private func store(_ udid: String, _ hid: SimulatorHID) -> SimulatorHID {
+        lock.lock()
+        defer { lock.unlock() }
+        if let existing = sessions[udid] {
+            return existing
+        }
+        sessions[udid] = hid
+        return hid
+    }
+
+    private func take(_ udid: String) -> SimulatorHID? {
+        lock.lock()
+        defer { lock.unlock() }
+        return sessions.removeValue(forKey: udid)
     }
 
     private func resolve(udid: String) throws -> Simulator {
@@ -148,11 +187,12 @@ enum FBSCStream {
         }
 
         let format = VideoStreamFormat.compressedVideo(withCodec: .h264, transport: .annexB)
+        // Viewer pane is ~2× logical points. Full 3× (1206×2622) is wasted encode.
         let streamConfig = VideoStreamConfiguration(
             format: format,
             framesPerSecond: 15,
             rateControl: .automatic,
-            scaleFactor: nil,
+            scaleFactor: 2.0 / 3.0,
             keyFrameRate: 4
         )
 

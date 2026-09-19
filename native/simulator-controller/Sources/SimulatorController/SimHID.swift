@@ -21,9 +21,9 @@ public struct SimHID: InputInjecting, Sendable {
     }
 
     public func tap(udid: String, x: Double, y: Double) async throws {
-        let device = try discovery.requireBooted(udid: udid)
-        _ = try await sender.send(udid: device.udid, events: HIDEventMapper.tap(x: x, y: y))
-        AgentActionLog.record(udid: device.udid, action: "tap", payload: ["x": x, "y": y, "deviceId": device.udid])
+        let id = try DeviceID.parse(udid)
+        _ = try await sender.send(udid: id, events: HIDEventMapper.tap(x: x, y: y))
+        AgentActionLog.record(udid: id, action: "tap", payload: ["x": x, "y": y, "deviceId": id])
     }
 
     public func swipe(
@@ -34,32 +34,32 @@ public struct SimHID: InputInjecting, Sendable {
         y2: Double,
         duration: Double
     ) async throws {
-        let device = try discovery.requireBooted(udid: udid)
+        let id = try DeviceID.parse(udid)
         _ = try await sender.send(
-            udid: device.udid,
+            udid: id,
             events: HIDEventMapper.swipe(x1: x1, y1: y1, x2: x2, y2: y2, duration: duration)
         )
         AgentActionLog.record(
-            udid: device.udid,
+            udid: id,
             action: "swipe",
-            payload: ["x1": x1, "y1": y1, "x2": x2, "y2": y2, "duration": duration, "deviceId": device.udid]
+            payload: ["x1": x1, "y1": y1, "x2": x2, "y2": y2, "duration": duration, "deviceId": id]
         )
     }
 
     public func typeText(udid: String, text: String) async throws {
-        let device = try discovery.requireBooted(udid: udid)
+        let id = try DeviceID.parse(udid)
         let events = try HIDEventMapper.typeText(text)
-        _ = try await sender.send(udid: device.udid, events: events)
-        AgentActionLog.record(udid: device.udid, action: "type", payload: ["text": text, "deviceId": device.udid])
+        _ = try await sender.send(udid: id, events: events)
+        AgentActionLog.record(udid: id, action: "type", payload: ["text": text, "deviceId": id])
     }
 
     public func press(udid: String, button: HardwareButton) async throws {
-        let device = try discovery.requireBooted(udid: udid)
-        _ = try await sender.send(udid: device.udid, events: HIDEventMapper.press(button))
+        let id = try DeviceID.parse(udid)
+        _ = try await sender.send(udid: id, events: HIDEventMapper.press(button))
         AgentActionLog.record(
-            udid: device.udid,
+            udid: id,
             action: button == .home ? "home" : "press",
-            payload: ["button": button.cliName, "deviceId": device.udid]
+            payload: ["button": button.cliName, "deviceId": id]
         )
     }
 }

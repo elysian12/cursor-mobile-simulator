@@ -112,6 +112,32 @@ describe("parseWSMessage", () => {
     });
   });
 
+  it("parses viewer_detach and control_result detach", () => {
+    expect(parseWSMessage(JSON.stringify({ type: "viewer_detach" }))).toEqual({
+      type: "viewer_detach",
+    });
+    expect(parseWSMessage(JSON.stringify({ type: "control_result", action: "detach", ok: true }))).toEqual({
+      type: "control_result",
+      action: "detach",
+      ok: true,
+    });
+    expect(
+      parseWSMessage(
+        JSON.stringify({
+          type: "control_result",
+          action: "detach",
+          ok: false,
+          error: { code: "NOT_ATTACHED", message: "Attach an explicit UDID first." },
+        }),
+      ),
+    ).toEqual({
+      type: "control_result",
+      action: "detach",
+      ok: false,
+      error: { code: "NOT_ATTACHED", message: "Attach an explicit UDID first." },
+    });
+  });
+
   it("accepts viewer_attach with udid alias", () => {
     expect(
       parseWSMessage(JSON.stringify({ type: "viewer_attach", udid: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" })),

@@ -12,6 +12,7 @@ import { Header } from "./components/Header";
 import { Toolbar } from "./components/Toolbar";
 import { deviceAspect, formatAgentLine, formatHostStatus } from "./lib/format";
 import { createH264Decoder } from "./lib/h264";
+import { createHidQueue } from "./lib/hid-queue";
 import { sendJson, viewerWebSocketUrl } from "./lib/ws-client";
 
 interface Banner {
@@ -45,6 +46,9 @@ export function App() {
   const livePaintedRef = useRef(false);
   const paintSeqRef = useRef(0);
   const decoderRef = useRef<ReturnType<typeof createH264Decoder>>();
+  const hidQueueRef = useRef(
+    createHidQueue<Record<string, unknown>>((message) => sendJson(wsRef.current, message)),
+  );
 
   const attached = Boolean(device);
   const hostLine = formatHostStatus(hostHidden, hostNote, attached);
@@ -131,6 +135,16 @@ export function App() {
             break;
           case "control_result":
             setBusy(false);
+            if (message.action === "tap" || message.action === "swipe") {
+              hidQueueRef.current.done();
+            }
+            if (message.action === "detach") {
+              if (message.ok) {
+                applyDetached();
+              } else if (message.error) {
+                setBanner({ kind: "error", code: message.error.code, message: message.error.message });
+              }
+            }
             if (message.action === "watch") {
               /* checkbox is optimistic; server may reject while live */
             }
@@ -162,6 +176,27 @@ export function App() {
       }
     };
   }, []);
+
+  const applyDetached = (): void => {
+    hidQueueRef.current.reset();
+    decoderRef.current?.close();
+    decoderRef.current = undefined;
+    livePaintedRef.current = false;
+    setLivePainted(false);
+    setUseCanvas(false);
+    setStreamMode("disconnected");
+    setStreamNote("Detached.");
+    setDevice(undefined);
+    if (imageUrlRef.current) {
+      URL.revokeObjectURL(imageUrlRef.current);
+      imageUrlRef.current = undefined;
+    }
+    setImageUrl(undefined);
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext("2d");
+      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
 
   const paintBlobUrl = (blob: Blob, isLiveJpeg: boolean): void => {
     const url = URL.createObjectURL(blob);
@@ -210,7 +245,7 @@ export function App() {
               canvas.width = bitmap.width;
               canvas.height = bitmap.height;
             }
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d", { alpha: false });
             ctx?.drawImage(bitmap, 0, 0);
             bitmap.close();
             livePaintedRef.current = true;
@@ -240,7 +275,7 @@ export function App() {
               canvas.width = frame.displayWidth;
               canvas.height = frame.displayHeight;
             }
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d", { alpha: false });
             ctx?.drawImage(frame, 0, 0);
             frame.close();
             livePaintedRef.current = true;
@@ -285,6 +320,11 @@ export function App() {
         }}
         onUdidDraft={setUdidDraft}
         onAttach={() => attachTo(udidDraft)}
+        onDetach={() => {
+          setBusy(true);
+          setBanner(undefined);
+          sendJson(wsRef.current, { type: "viewer_detach" });
+        }}
         onRefresh={() => {
           setBusy(true);
           sendJson(wsRef.current, { type: "viewer_refresh" });
@@ -342,9 +382,9 @@ export function App() {
                 ? "Use Refresh snapshot. Live is only shown after a decoded frame is painted."
                 : "Pick a device from simulator.list and Attach."
             }
-            onTap={(x, y) => sendJson(wsRef.current, { type: "control_tap", x, y })}
+            onTap={(x, y) => hidQueueRef.current.send({ type: "control_tap", x, y })}
             onSwipe={(x1, y1, x2, y2, duration) =>
-              sendJson(wsRef.current, { type: "control_swipe", x1, y1, x2, y2, duration })
+              hidQueueRef.current.send({ type: "control_swipe", x1, y1, x2, y2, duration })
             }
           />
         </div>

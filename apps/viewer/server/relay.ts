@@ -22,6 +22,7 @@ import {
 import { asProtocolError, GRANT_HINT, ProtocolRpcError } from "./errors.js";
 import { createAnnexBJpegTranscoder, type JpegTranscoder } from "./h264-jpeg.js";
 import { isNearBlackLuma } from "./jpeg-luma.js";
+import { viewerJpegSize } from "./live-size.js";
 import { clampWatchInterval, pngSize } from "./png.js";
 import type { RpcClient } from "./rpc-client.js";
 import { deviceParams, requireUdid } from "./udid.js";
@@ -62,6 +63,10 @@ export function createRelay(rpc: RpcClient, json: JsonSink, binary: BinarySink):
   let blackLiveStreak = 0;
   let blackFallbackArmed = false;
   const BLACK_LIVE_STREAK = 4;
+  let liveFrameCount = 0;
+  let liveByteTotal = 0;
+  let liveWindowStarted = 0;
+  let lastLiveFrameAt = 0;
 
   function emitStream(partial: Omit<StreamStatusMessage, "type">): void {
     streamMode = partial.mode;
@@ -331,10 +336,8 @@ export function createRelay(rpc: RpcClient, json: JsonSink, binary: BinarySink):
       let liveEmitted = false;
       blackLiveStreak = 0;
       blackFallbackArmed = false;
-      const pixelSize = (): { width: number; height: number } => ({
-        width: device?.screen ? Math.round(device.screen.width * device.screen.scale) : 0,
-        height: device?.screen ? Math.round(device.screen.height * device.screen.scale) : 0,
-      });
+      const jpegSize = viewerJpegSize(device?.screen);
+      const pixelSize = (): { width: number; height: number } => jpegSize;
       const emitPaintedLive = (codec: NonNullable<StreamStatusMessage["codec"]>, note: string): void => {
         if (liveEmitted) {
           return;
@@ -368,22 +371,47 @@ export function createRelay(rpc: RpcClient, json: JsonSink, binary: BinarySink):
         if (blackFallbackArmed) {
           blackFallbackArmed = false;
         }
+        jpegTranscoder?.stopProbe();
         const size = pixelSize();
         emitPaintedLive("jpeg", "Live JPEG decoded from H.264 Annex-B. Not a screenshot poll.");
+        const now = Date.now();
+        if (!liveWindowStarted) {
+          liveWindowStarted = now;
+        }
+        liveFrameCount += 1;
+        liveByteTotal += jpeg.byteLength;
+        const interval = lastLiveFrameAt ? now - lastLiveFrameAt : 0;
+        lastLiveFrameAt = now;
+        if (liveFrameCount === 1 || liveFrameCount % 15 === 0) {
+          const elapsed = Math.max(1, now - liveWindowStarted);
+          const fps = (liveFrameCount * 1000) / elapsed;
+          const avg = Math.round(liveByteTotal / liveFrameCount);
+          process.stderr.write(
+            `[viewer] live jpeg frames=${liveFrameCount} last=${jpeg.byteLength}B avg=${avg}B interval=${interval}ms ~${fps.toFixed(1)}fps ${size.width}×${size.height}\n`,
+          );
+        }
         sendMedia(udid, jpeg, {
           format: "jpeg",
           width: size.width,
           height: size.height,
-          timestampMs: Date.now(),
+          timestampMs: now,
           source: "stream",
         });
       };
       jpegTranscoder?.close();
-      jpegTranscoder = createAnnexBJpegTranscoder(({ jpeg, luma }) => sendJpeg(jpeg, luma), (error) => {
-        process.stderr.write(`[viewer] H.264→JPEG transcode failed: ${error.message}\n`);
-        jpegTranscoder?.close();
-        jpegTranscoder = undefined;
-      });
+      liveFrameCount = 0;
+      liveByteTotal = 0;
+      liveWindowStarted = 0;
+      lastLiveFrameAt = 0;
+      jpegTranscoder = createAnnexBJpegTranscoder(
+        ({ jpeg, luma }) => sendJpeg(jpeg, luma),
+        (error) => {
+          process.stderr.write(`[viewer] H.264→JPEG transcode failed: ${error.message}\n`);
+          jpegTranscoder?.close();
+          jpegTranscoder = undefined;
+        },
+        { width: jpegSize.width, height: jpegSize.height },
+      );
       sock.on("data", (chunk: Buffer) => {
         if (jpegTranscoder) {
           jpegTranscoder.push(chunk);
@@ -579,8 +607,10 @@ export function createRelay(rpc: RpcClient, json: JsonSink, binary: BinarySink):
     },
 
     async tap(x: number, y: number): Promise<void> {
+      const started = Date.now();
       try {
         const attached = requireSession();
+        // HID must not wait on screenshot/list. Same RPC process is concurrent in native.
         await rpc.call(Methods.simulatorTap, { ...deviceParams(attached.device.udid), x, y });
         json({
           type: "agent_action",
@@ -589,9 +619,11 @@ export function createRelay(rpc: RpcClient, json: JsonSink, binary: BinarySink):
           payload: { x, y, deviceId: attached.device.udid },
         });
         json({ type: "control_result", action: "tap", ok: true });
+        process.stderr.write(`[viewer] tap ack ${Date.now() - started}ms\n`);
       } catch (error) {
         emitError(error);
         json({ type: "control_result", action: "tap", ok: false, error: asProtocolError(error) });
+        process.stderr.write(`[viewer] tap ack ${Date.now() - started}ms (error)\n`);
       }
     },
 

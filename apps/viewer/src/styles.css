@@ -224,6 +224,10 @@ button {
   border-color: #2d5a93;
 }
 
+.btn.detach {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+
 .btn .home-icon {
   display: inline-block;
   vertical-align: -2px;

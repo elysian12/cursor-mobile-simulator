@@ -267,6 +267,18 @@ public struct RPCHandler: Sendable {
     }
 }
 
+private actor RPCResponseWriter {
+    private let output: FileHandle
+
+    init(output: FileHandle) {
+        self.output = output
+    }
+
+    func write(_ data: Data) throws {
+        try output.write(contentsOf: data)
+    }
+}
+
 public struct JSONRPCServer: Sendable {
     private let handler: RPCHandler
 
@@ -274,13 +286,20 @@ public struct JSONRPCServer: Sendable {
         self.handler = handler
     }
 
+    /// Handle requests concurrently so screenshot/list cannot block HID tap.
     public func run(output: FileHandle = .standardOutput) async throws {
-        while let line = readLine(strippingNewline: true) {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty { continue }
-            let response = await handler.handle(line: trimmed)
-            let data = try RPCCodec.encodeResponse(response)
-            try output.write(contentsOf: data)
+        let writer = RPCResponseWriter(output: output)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            while let line = readLine(strippingNewline: true) {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty { continue }
+                group.addTask {
+                    let response = await self.handler.handle(line: trimmed)
+                    let data = try RPCCodec.encodeResponse(response)
+                    try await writer.write(data)
+                }
+            }
+            try await group.waitForAll()
         }
     }
 }

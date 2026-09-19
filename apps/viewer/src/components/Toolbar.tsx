@@ -12,6 +12,7 @@ interface ToolbarProps {
   onSelect: (udid: string) => void;
   onUdidDraft: (value: string) => void;
   onAttach: () => void;
+  onDetach: () => void;
   onRefresh: () => void;
   onBoot: () => void;
   onHome: () => void;
@@ -31,6 +32,7 @@ export function Toolbar({
   onSelect,
   onUdidDraft,
   onAttach,
+  onDetach,
   onRefresh,
   onBoot,
   onHome,
@@ -45,6 +47,7 @@ export function Toolbar({
           id="device-picker"
           value={selectedId}
           onChange={(event) => onSelect(event.target.value)}
+          disabled={attached}
         >
           <option value="">Select a simulator…</option>
           {devices.map((device) => (
@@ -63,12 +66,25 @@ export function Toolbar({
           placeholder="Explicit UUID"
           autoComplete="off"
           spellCheck={false}
+          disabled={attached}
         />
       </div>
       <div className="actions">
-        <button type="button" className="btn primary" onClick={onAttach} disabled={busy || !udidDraft.trim()}>
-          Attach
-        </button>
+        {attached ? (
+          <button
+            type="button"
+            className="btn detach"
+            onClick={onDetach}
+            disabled={busy}
+            title="Stop streaming. Leaves the simulator Booted."
+          >
+            Detach
+          </button>
+        ) : (
+          <button type="button" className="btn primary" onClick={onAttach} disabled={busy || !udidDraft.trim()}>
+            Attach
+          </button>
+        )}
         <button type="button" className="btn" onClick={onRefresh} disabled={busy || !attached}>
           Refresh snapshot
         </button>
