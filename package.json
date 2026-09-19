@@ -1,0 +1,27 @@
+{
+  "name": "mobile-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable macOS iOS Simulator control platform. Native Swift owns Apple; Node MCP and React viewer come later.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:native": "bash scripts/build-native.sh",
+    "build:idb": "bash scripts/build-idb.sh",
+    "build:protocol": "npm run build -w @mobile-simulator/protocol",
+    "build:mcp": "npm run build -w @mobile-simulator/protocol && npm run build -w mobile-simulator-mcp",
+    "test:native": "bash scripts/test-native.sh",
+    "test:hid-live": "bash scripts/test-hid-live.sh",
+    "test:mcp": "npm test -w mobile-simulator-mcp",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:viewer": "npm run dev -w @mobile-simulator/viewer",
+    "build:viewer": "npm run build -w @mobile-simulator/viewer",
+    "test:viewer": "npm test -w @mobile-simulator/viewer"
+  }
+}

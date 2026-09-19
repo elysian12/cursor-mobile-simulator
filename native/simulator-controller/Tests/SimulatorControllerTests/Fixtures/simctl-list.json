@@ -1,0 +1,57 @@
+{
+  "devices": {
+    "com.apple.CoreSimulator.SimRuntime.iOS-26-5": [
+      {
+        "udid": "939B604A-4B42-4B0C-B164-CAFAB320C123",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
+        "state": "Shutdown",
+        "name": "iPhone 17 Pro"
+      },
+      {
+        "udid": "E5A74AE1-B430-4539-9EA9-0D97298B3718",
+        "isAvailable": true,
+        "state": "Booted",
+        "name": "iPhone 17 Pro Max"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.iOS-18-0": [
+      {
+        "udid": "E842EAB2-10C1-413E-BF77-727D77A1B29D",
+        "isAvailable": true,
+        "state": "Shutdown",
+        "name": "iPhone 16 Pro"
+      },
+      {
+        "udid": "AAAA0000-0000-0000-0000-000000000001",
+        "isAvailable": false,
+        "state": "Shutdown",
+        "name": "Unavailable Phone"
+      }
+    ],
+    "iOS 17.2": [
+      {
+        "udid": "BBBB0000-0000-0000-0000-000000000002",
+        "isAvailable": true,
+        "state": "Creating",
+        "name": "Legacy iPhone"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.watchOS-11-2": [
+      {
+        "udid": "CCCC0000-0000-0000-0000-000000000003",
+        "isAvailable": true,
+        "state": "Shutdown",
+        "name": "Apple Watch"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.tvOS-18-0": [
+      {
+        "udid": "DDDD0000-0000-0000-0000-000000000004",
+        "isAvailable": true,
+        "state": "Shutting Down",
+        "name": "Apple TV"
+      }
+    ]
+  }
+}

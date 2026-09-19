@@ -1,0 +1,17 @@
+mobile-simulator
+Copyright (c) 2026 mobile-simulator contributors
+SPDX-License-Identifier: MIT
+
+This product optionally builds and links Facebook IDB frameworks
+(FBControlCore, FBSimulatorControl, and related helpers) from source.
+Those sources are cloned at build time by scripts/build-idb.sh and are
+not vendored in this repository.
+
+facebook/idb
+Copyright (c) Meta Platforms, Inc. and affiliates.
+Licensed under the MIT License.
+https://github.com/facebook/idb
+
+Pinned revision: see vendor/IDB_PIN
+Build: scripts/build-idb.sh
+

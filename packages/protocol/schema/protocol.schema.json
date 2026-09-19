@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mobile-simulator.dev/schema/protocol.schema.json",
+  "title": "mobile-simulator protocol",
+  "description": "Wire types mirrored by native Swift. See packages/protocol/src.",
+  "$defs": {
+    "udid": {
+      "type": "string",
+      "description": "Explicit simulator UDID. Never the literal 'booted'."
+    },
+    "deviceState": {
+      "type": "string",
+      "enum": ["Creating", "Booting", "Booted", "Shutting Down", "Shutdown", "Unknown"]
+    },
+    "simulatorDevice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["udid", "name", "runtime", "state"],
+      "properties": {
+        "udid": { "$ref": "#/$defs/udid" },
+        "name": { "type": "string" },
+        "runtime": { "type": "string" },
+        "state": { "$ref": "#/$defs/deviceState" },
+        "deviceType": { "type": "string" },
+        "screen": { "$ref": "#/$defs/screenInfo" }
+      }
+    },
+    "screenInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "scale", "origin"],
+      "properties": {
+        "width": { "type": "number", "description": "Device points" },
+        "height": { "type": "number" },
+        "scale": { "type": "number" },
+        "origin": { "type": "string", "description": "Always topLeft" }
+      }
+    },
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "DEVICE_NOT_BOOTED",
+        "DEVICE_NOT_FOUND",
+        "PERMISSION_DENIED",
+        "NOT_ATTACHED",
+        "DEVICE_LOCKED",
+        "APP_NOT_FOUND",
+        "NOT_IMPLEMENTED",
+        "INVALID_REQUEST",
+        "INVALID_UDID",
+        "XCODE_NOT_FOUND",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "rpcId": {
+      "oneOf": [{ "type": "string" }, { "type": "number" }]
+    },
+    "rpcRequest": {
+      "type": "object",
+      "required": ["id", "method"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/rpcId" },
+        "method": { "type": "string" },
+        "params": { "type": "object" }
+      }
+    },
+    "rpcSuccess": {
+      "type": "object",
+      "required": ["id", "result"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/rpcId" },
+        "result": true
+      }
+    },
+    "rpcFailure": {
+      "type": "object",
+      "required": ["id", "error"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": {
+          "oneOf": [{ "$ref": "#/$defs/rpcId" }, { "type": "null" }]
+        },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "$ref": "#/$defs/errorCode" },
+            "message": { "type": "string" },
+            "data": { "type": "object" }
+          }
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "deviceUDID", "createdAt", "owner", "attached", "bootedByServer"],
+      "properties": {
+        "id": { "type": "string" },
+        "deviceUDID": { "$ref": "#/$defs/udid" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "owner": { "type": "string" },
+        "attached": { "type": "boolean" },
+        "bootedByServer": { "type": "boolean" }
+      }
+    },
+    "deviceStatusMessage": {
+      "type": "object",
+      "required": ["type", "device"],
+      "properties": {
+        "type": { "const": "device_status" },
+        "device": { "$ref": "#/$defs/simulatorDevice" },
+        "sessionId": { "type": "string" }
+      }
+    },
+    "agentActionMessage": {
+      "type": "object",
+      "required": ["type", "sessionId", "action", "payload"],
+      "properties": {
+        "type": { "const": "agent_action" },
+        "sessionId": { "type": "string" },
+        "action": { "type": "string" },
+        "payload": { "type": "object" }
+      }
+    },
+    "mediaCodec": {
+      "type": "string",
+      "enum": ["jpeg", "png", "h264_annexb"],
+      "description": "Binary WebSocket media only. Never inlined in JSON control."
+    },
+    "frameMetaMessage": {
+      "type": "object",
+      "required": ["type", "deviceId", "format", "timestamp", "source", "byteLength"],
+      "properties": {
+        "type": { "const": "frame_meta" },
+        "deviceId": { "$ref": "#/$defs/udid" },
+        "format": { "$ref": "#/$defs/mediaCodec" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "timestamp": { "type": "number" },
+        "source": { "type": "string", "enum": ["stream", "snapshot"] },
+        "byteLength": { "type": "number" }
+      }
+    },
+    "controlTapMessage": {
+      "type": "object",
+      "required": ["type", "x", "y"],
+      "properties": {
+        "type": { "const": "control_tap" },
+        "x": { "type": "number", "description": "Device points, origin top-left" },
+        "y": { "type": "number" }
+      }
+    },
+    "controlSwipeMessage": {
+      "type": "object",
+      "required": ["type", "x1", "y1", "x2", "y2"],
+      "properties": {
+        "type": { "const": "control_swipe" },
+        "x1": { "type": "number" },
+        "y1": { "type": "number" },
+        "x2": { "type": "number" },
+        "y2": { "type": "number" },
+        "duration": { "type": "number", "description": "Seconds" }
+      }
+    },
+    "controlHomeMessage": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "control_home" }
+      }
+    },
+    "hostStatusMessage": {
+      "type": "object",
+      "required": ["type", "action", "hidden", "note"],
+      "properties": {
+        "type": { "const": "host_status" },
+        "action": { "type": "string", "enum": ["hidden", "quit", "shown", "none"] },
+        "hidden": { "type": "boolean" },
+        "app": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "streamStatusMessage": {
+      "type": "object",
+      "required": ["type", "mode", "connected"],
+      "properties": {
+        "type": { "const": "stream_status" },
+        "mode": { "type": "string", "enum": ["live", "snapshot", "disconnected"] },
+        "connected": { "type": "boolean" },
+        "codec": { "$ref": "#/$defs/mediaCodec" },
+        "note": { "type": "string" }
+      }
+    },
+    "permissionsFile": {
+      "type": "object",
+      "required": ["version", "allowSimulatorControl"],
+      "properties": {
+        "version": { "const": 1 },
+        "allowSimulatorControl": { "type": "boolean" },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "mobile-simulator": {
+      "command": "node",
+      "args": [
+        "/ABS/PATH/mobile-simulator/apps/mcp-server/dist/index.js"
+      ],
+      "env": {
+        "MOBILE_SIMULATOR_BIN": "/ABS/PATH/mobile-simulator/native/simulator-controller/.build/release/mobile-sim"
+      }
+    }
+  }
+}

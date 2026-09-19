@@ -1,0 +1,6 @@
+repo=https://github.com/facebook/idb
+sha=92cc718f323174a1bfb6eb8ab94738d5f819e4ff
+date=2026-09-18
+reason=Xcode 27 / CoreSimulator-1155.4 DTUHID liveness: detect crashed dtuhidd, retry barrier, no silent HID drop.
+license=MIT
+copyright=Copyright (c) Meta Platforms, Inc. and affiliates.

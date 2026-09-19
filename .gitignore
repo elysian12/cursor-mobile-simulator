@@ -1,0 +1,71 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+dist/
+*.tsbuildinfo
+coverage/
+.nyc_output/
+.turbo/
+
+# Swift / Xcode
+.build/
+.swiftpm/
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcresult
+
+# Vendored facebook/idb clone + build products (only vendor/IDB_PIN is tracked)
+vendor/facebook-idb/
+vendor/idb/
+vendor/**/Build/
+vendor/**/DerivedData/
+
+# Simulator / local artifacts
+*.app/
+screenshot.png
+screenshot-*.png
+*-screenshot.png
+before.png
+after.png
+*.h264
+*.annexb
+simulator-artifacts/
+CoreSimulator-logs/
+
+# Live stream sockets
+*.sock
+*.socket
+
+# Runtime / consent artifacts (also live under ~/.mobile-simulator)
+last-action.json
+permissions.json
+.mobile-simulator/
+
+# Local Cursor MCP with machine-specific paths — keep the example
+.cursor/mcp.json
+!.cursor/mcp.json.example
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.mobileprovision
+id_rsa
+id_rsa.pub
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

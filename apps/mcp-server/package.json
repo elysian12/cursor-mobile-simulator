@@ -1,0 +1,38 @@
+{
+  "name": "mobile-simulator-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cursor MCP server for iOS Simulator control. Speaks JSON-RPC to native mobile-sim; never calls CoreSimulator.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "mobile-simulator-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test --test-reporter spec src/udid.test.ts src/locate-binary.test.ts src/session-store.test.ts src/platform.test.ts src/rpc-client.test.ts src/handlers.contract.test.ts src/server.tools.test.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@mobile-simulator/protocol": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
