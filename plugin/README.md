@@ -5,6 +5,7 @@ Thin Cursor plugin: skill + rule + MCP launch config. **No `mobile-sim` binary**
 | File | Role |
 | --- | --- |
 | `.cursor-plugin/plugin.json` | Cursor Plugin manifest (`ios`, `simulator`, `mcp`) |
+| `assets/logo.svg` | Marketplace / Customize logo |
 | `plugin.json` | Agent Plugins manifest |
 | `mcp.json` | Stdio MCP (`npx -y mobile-simulator-mcp` + `MOBILE_SIMULATOR_BIN`) |
 | `skills/run-on-simulator/SKILL.md` | “run this on the simulator” workflow |
